@@ -34,11 +34,12 @@ def getS3FolderPrefix(w, imageGroupID):
         suffix = imageGroupID
     return 'Works/{two}/{RID}/images/{RID}-{suffix}/'.format(two=two, RID=w, suffix=suffix)
 
-def ildatafromfsfn(fsfn):
+def ildatafromfsfn(fsfn, s3fn):
     errors = []
     size = os.stat(fsfn).st_size
     im = Image.open(fsfn)
     data = {}
+    data["filename"] = s3fn
     data["width"] = im.width
     data["height"] = im.height
     # we indicate sizes of the more than 1MB
@@ -105,7 +106,7 @@ def main():
         os.makedirs(s3prefix, exist_ok=True)
         manifest = []
         for imginfo in iginfo['il']:
-            manifest.append(ildatafromfsfn(imginfo['fsfn']))
+            manifest.append(ildatafromfsfn(imginfo['fsfn'], imginfo['s3fn']))
             shutil.copyfile(imginfo['fsfn'], s3prefix+imginfo['s3fn'])
         manifest_str = json.dumps(manifest)
         manifest_gzip = gzip_str(manifest_str)
