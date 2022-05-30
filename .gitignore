@@ -1,5 +1,7 @@
 s3/
 images/
+GND.ttl
+curlcredentials.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

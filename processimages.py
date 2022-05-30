@@ -75,7 +75,7 @@ def get_iginfos():
         for row in reader:
             if row[0] not in iginfos:
                 iginfos[row[0]] = {}
-            iginfos[row[0]]['w'] = row[2]
+            iginfos[row[0]]['w'] = row[2][1:]
     with open('input/Catalog template - Images.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
