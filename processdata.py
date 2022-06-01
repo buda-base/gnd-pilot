@@ -90,7 +90,7 @@ def add_work(row, g, with_inferred):
 def add_topic(row, g, with_inferred):
     pass
 
-def add_instance(row, g, with_inferred):
+def add_instance(row, g, with_inferred, winfos):
     # 0: id
     # 1: Prakraś ID
     # 2: version of
@@ -113,6 +113,8 @@ def add_instance(row, g, with_inferred):
     main = BDR[row[0]]
     g.add((main, RDF.type, BDO.Instance))
     if row[3] == "":
+        winfo = winfos[row[0][1:]]
+        g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
         admin = BDA[row[0]]
         g.add((admin, RDF.type, BDA.AdminData))
         g.add((admin, ADM.adminAbout, main))
@@ -121,6 +123,7 @@ def add_instance(row, g, with_inferred):
         g.add((main, BDO.instanceHasReproduction, BDR[row[0][1:]]))
     else:
         g.add((main, BDO.partOf, BDR[row[3]]))
+        g.add((main, BDO.inRootInstance, BDR[row[3]]))
         if with_inferred:
             g.add((BDR[row[3]], BDO.hasPart, main))
         if row[4] != "":
@@ -155,7 +158,7 @@ def add_instance(row, g, with_inferred):
     g.add((titleR, RDFS.label, titleL))
     g.add((titleR, RDF.type, BDO.Title))
     if row[9] != "":
-        g.add((main, BDO.script, BDR[row[8]]))
+        g.add((main, BDO.script, BDR[row[9]]))
     if row[10] != "":
         g.add((main, BDO.material, BDR[row[10]]))
     if row[11] != "":
@@ -164,7 +167,7 @@ def add_instance(row, g, with_inferred):
         ev = BDR["EV"+row[0]+"_CE"]
         g.add((main, BDO.instanceEvent, ev))
         g.add((ev, BDO.eventWhen, Literal(row[17], datatype=EDTF)))
-        g.add((ev, RDF.type, BDR.CopyEvent))
+        g.add((ev, RDF.type, BDO.CopyEvent))
 
 def add_iinstance(winfo, g, with_inferred):
     main = BDR[winfo['id']]
@@ -228,17 +231,17 @@ def main():
         next(reader)
         for row in reader:
             add_work(row, g, True)
+    winfos = get_winfos()
     with open('input/Catalog template - Version _ Manuscript.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
-            add_instance(row, g, True)
+            add_instance(row, g, True, winfos)
     with open('input/Catalog template - Collection.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
             add_collection(row, g, True)
-    winfos = get_winfos()
     for w, winfo in winfos.items():
         add_iinstance(winfo, g, True)
     g.serialize("GND.ttl", format="turtle")
