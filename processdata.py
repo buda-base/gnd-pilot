@@ -5,6 +5,9 @@ import csv
 import pathlib
 import re
 from transliterate import translit
+import json
+from copy import deepcopy
+import hashlib
 
 PREFIXMAP = {
     "http://purl.bdrc.io/resource/": "bdr",
@@ -42,6 +45,8 @@ NSM.bind("tmp", TMP)
 
 rdflib.term._toPythonMapping.pop(rdflib.XSD['gYear'])
 
+BVM_HOME = "../buda-volume-manifests/"
+
 def get_winfos():
     winfos = {}
     iginfos = {}
@@ -52,7 +57,7 @@ def get_winfos():
             w = row[2][1:]
             if w not in winfos:
                 winfos[w] = {'id': w, 'ig': []}
-            iginfo = {'id': row[0], 'nbimages': 0, 'w': w}
+            iginfo = {'id': row[0], 'nbimages': 0, 'w': w, 'label_en': row[3]}
             iginfos[row[0]] = iginfo
             winfos[w]['ig'].append(iginfo)
     with open('input/Catalog template - Images.csv', newline='') as csvfile:
@@ -197,6 +202,7 @@ def add_iinstance(winfo, g, with_inferred):
         g.add((igmain, BDO.volumeNumber, Literal(vnum, datatype=XSD.integer)))
         vnum += 1
         g.add((igmain, BDO.volumePagesTbrcIntro, Literal(0, datatype=XSD.integer)))
+        g.add((igmain, SKOS.prefLabel, Literal(iginfo['label_en'], lang="en")))
         g.add((igmain, BDO.volumePagesTotal, Literal(iginfo['nbimages'], datatype=XSD.integer)))
         g.add((main, BDO.instanceHasVolume, igmain))
         if with_inferred:
@@ -218,7 +224,48 @@ def add_collection(row, g, with_inferred):
     g.add((main, SKOS.prefLabel, Literal(row[2], lang="en")))
     g.add((main, RDFS.seeAlso, URIRef(row[1])))
 
-def main():
+def get_iginfos():
+    iginfos = {}
+    with open('input/Catalog template - ImageGroup _ Scroll.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            if row[0] not in iginfos:
+                iginfos[row[0]] = {}
+            iginfos[row[0]]['w'] = row[2][1:]
+    with open('input/Catalog template - Images.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            if row[1] not in iginfos:
+                print("error: "+row[1]+" referenced in images but not in image scrolls")
+                continue
+            if "il" not in iginfos[row[1]]:
+                iginfos[row[1]]['il'] = []
+            imginfo = {'s3fn': row[0], 'fsfn': row[2], 'stdfn': row[3]}
+            iginfos[row[1]]['il'].append(imginfo)
+    return iginfos
+
+def produce_manifests():
+    iginfos = get_iginfos()
+    with open('bvm-template.json') as f:
+        template = json.load(f)
+        for ig, iginfo in iginfos.items():
+            bvm = deepcopy(template)
+            bvm["imggroup"] = "bdr:"+ig
+            ilist = bvm["view"]["view1"]["imagelist"]
+            for iinfo in iginfo["il"]:
+                bvmiinfo = {}
+                bvmiinfo["filename"] = iinfo["s3fn"]
+                bvmiinfo["sourcePath"] = iinfo["fsfn"]
+                ilist.append(bvmiinfo)
+            md5 = hashlib.md5(str.encode(ig))
+            two = md5.hexdigest()[:2]
+            fpath = BVM_HOME+two+"/"+ig+".json"
+            with open(fpath, 'w') as outfile:
+                json.dump(bvm, outfile, indent=4, sort_keys=True, ensure_ascii=False)
+
+def produce_ttl():
     g = rdflib.Graph()
     g.bind("bdr", BDR)
     g.bind("bdo", BDO)
@@ -246,5 +293,9 @@ def main():
     for w, winfo in winfos.items():
         add_iinstance(winfo, g, True)
     g.serialize("GND.ttl", format="turtle")
+
+def main():
+    #produce_ttl()
+    produce_manifests()
 
 main()
