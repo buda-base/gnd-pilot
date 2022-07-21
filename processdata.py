@@ -114,7 +114,7 @@ def add_instance(row, g, with_inferred, winfos):
     g.add((main, RDF.type, BDO.Instance))
     if row[3] == "":
         winfo = winfos[row[0][1:]]
-        g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
+        #g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
         admin = BDA[row[0]]
         g.add((admin, RDF.type, BDA.AdminData))
         g.add((admin, ADM.adminAbout, main))
@@ -201,6 +201,7 @@ def add_iinstance(winfo, g, with_inferred):
         g.add((main, BDO.instanceHasVolume, igmain))
         if with_inferred:
             g.add((igmain, BDO.volumeOf, main))
+    g.add((main, BDO.numberOfVolumes, Literal(vnum, datatype=XSD.integer)))
 
 def add_collection(row, g, with_inferred):
     # 0: bdrc id

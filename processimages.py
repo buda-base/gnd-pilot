@@ -11,7 +11,20 @@ import csv
 
 from PIL import Image
 
-def getS3FolderPrefix(w, imageGroupID):
+IMG_INPUT_PATH = "images/"
+IMG_OUTPUT_PATH = "s3/"
+OPTJPG_CMD = None # "/home/eroux/softs/mozjpeg/build/jpegtran-static"
+
+if len(sys.argv) > 1:
+    IMG_INPUT_PATH = sys.argv[1]
+
+if len(sys.argv) > 2:
+    IMG_OUTPUT_PATH = sys.argv[2]
+
+if len(sys.argv) > 3:
+    OPTJPG_CMD = sys.argv[3]    
+
+def getS3FolderPrefix(w):
     """
     gives the s3 prefix (~folder) in which the volume will be present.
     inpire from https://github.com/buda-base/buda-iiif-presentation/blob/master/src/main/java/io/bdrc/iiif/presentation/ImageInfoListService.java#L73
@@ -27,12 +40,15 @@ def getS3FolderPrefix(w, imageGroupID):
     md5 = hashlib.md5(str.encode(w))
     two = md5.hexdigest()[:2]
 
+    return 'Works/{two}/{RID}/'.format(two=two, RID=w)
+
+def getS3FolderIG(imageGroupID):
     pre, rest = imageGroupID[0], imageGroupID[1:]
     if pre == 'I' and rest.isdigit() and len(rest) == 4:
         suffix = rest
     else:
         suffix = imageGroupID
-    return 'Works/{two}/{RID}/images/{RID}-{suffix}/'.format(two=two, RID=w, suffix=suffix)
+    return suffix
 
 def ildatafromfsfn(fsfn, s3fn):
     errors = []
@@ -67,6 +83,19 @@ def ildatafromfsfn(fsfn, s3fn):
     print(errors)
     return data
 
+def get_source_folders():
+    wfolderinfos = {}
+    with open('input/Catalog template - Version _ Manuscript.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for row in reader:
+            if row[18] == "":
+                continue
+            if row[0] in wfolderinfos:
+                print("two folders for "+row[0])
+                continue
+            wfolderinfos[row[0][1:]] = row[18]
+    return wfolderinfos
 
 def get_iginfos():
     iginfos = {}
@@ -86,7 +115,7 @@ def get_iginfos():
                 continue
             if "il" not in iginfos[row[1]]:
                 iginfos[row[1]]['il'] = []
-            imginfo = {'s3fn': row[0], 'fsfn': "images/"+row[2], 'stdfn': row[3]}
+            imginfo = {'s3fn': row[0], 'fsfn': IMG_INPUT_PATH+row[2], 'stdfn': row[3]}
             iginfos[row[1]]['il'].append(imginfo)
     return iginfos
 
@@ -98,20 +127,59 @@ def gzip_str(s):
     bytes_obj = out.getvalue()
     return bytes_obj
 
-def main():
+def optimize_jpg(srcfname, dstfname):
+    if OPTJPG_CMD is not None:
+        print(OPTJPG_CMD+" '"+srcfname+"' > '"+dstfname+"'")
+        os.system(OPTJPG_CMD+" '"+srcfname+"' > '"+dstfname+"'")
+    else:
+        print("cp '"+srcfname+"' '"+dstfname+"'")
+        shutil.copy(srcfname, dstfname)
+
+def convert_to_jpg(srcfname, dstfname):
+    print("convert '"+srcfname+"' -quality 85 -format jpg '"+dstfname+"nopt'")
+    os.system("convert '"+srcfname+"' -quality 85 -format jpg '"+dstfname+"nopt'")
+    optimize_jpg(dstfname+"nopt", dstfname)
+    print("rm '"+dstfname+"nopt'")
+    os.system("rm '"+dstfname+"nopt'")
+
+def process_image(ig, iginfo, imginfo):
+    s3prefix = IMG_OUTPUT_PATH+getS3FolderPrefix(iginfo['w'])
+    imagesprefix = s3prefix+'images/'+iginfo['w']+'-'+getS3FolderIG(ig)+'/'
+    
+    os.makedirs(imagesprefix, exist_ok=True)
+    # if source image is not jpeg, encode it in jpeg:
+    ext = imginfo['fsfn'].lower()[-4:]
+    if ext == "jpeg" or ext == ".jpg":
+        optimize_jpg(imginfo['fsfn'], imagesprefix+imginfo['s3fn'])
+    else:
+        convert_to_jpg(imginfo['fsfn'], imagesprefix+imginfo['s3fn'])  
+
+def copy_sources():
+    wfolderinfos = get_source_folders()
+    print(wfolderinfos)
+    for w, wpath in wfolderinfos.items():
+        s3prefix = IMG_OUTPUT_PATH+getS3FolderPrefix(w)
+        sourcesprefix = s3prefix+'sources/'
+        os.makedirs(sourcesprefix, exist_ok=True)
+        # copy source images
+        print("rm -rf '"+sourcesprefix+wpath+"'")
+        shutil.rmtree(sourcesprefix+wpath)
+        print("cp -R '"+IMG_INPUT_PATH+wpath+"' '"+sourcesprefix+wpath+"'")
+        shutil.copytree(IMG_INPUT_PATH+wpath, sourcesprefix+wpath)
+
+def process_images():
     iginfos = get_iginfos()
-    print(iginfos)
     for ig, iginfo in iginfos.items():
-        s3prefix = 's3/'+getS3FolderPrefix(iginfo['w'], ig)
-        os.makedirs(s3prefix, exist_ok=True)
+        imagesprefix = IMG_OUTPUT_PATH+getS3FolderPrefix(iginfo['w'])+'images/'+iginfo['w']+'-'+getS3FolderIG(ig)+'/'
         manifest = []
         for imginfo in iginfo['il']:
+            process_image(ig, iginfo, imginfo)
             manifest.append(ildatafromfsfn(imginfo['fsfn'], imginfo['s3fn']))
-            shutil.copyfile(imginfo['fsfn'], s3prefix+imginfo['s3fn'])
         manifest_str = json.dumps(manifest)
         manifest_gzip = gzip_str(manifest_str)
-        with open(s3prefix+"dimensions.json", "wb") as df:
+        with open(imagesprefix+"dimensions.json", "wb") as df:
             df.write(manifest_gzip)
 
 if __name__ == '__main__':
-    main()
+    copy_sources()
+    process_images()
