@@ -136,8 +136,8 @@ def optimize_jpg(srcfname, dstfname):
         shutil.copy(srcfname, dstfname)
 
 def convert_to_jpg(srcfname, dstfname):
-    print("convert '"+srcfname+"' -quality 85 -format jpg '"+dstfname+"nopt'")
-    os.system("convert '"+srcfname+"' -quality 85 -format jpg '"+dstfname+"nopt'")
+    print("convert '"+srcfname+"' -quality 85 -format jpg 'jpg:"+dstfname+"nopt'")
+    os.system("convert '"+srcfname+"' -quality 85 -format jpg 'jpg:"+dstfname+"nopt'")
     optimize_jpg(dstfname+"nopt", dstfname)
     print("rm '"+dstfname+"nopt'")
     os.system("rm '"+dstfname+"nopt'")
