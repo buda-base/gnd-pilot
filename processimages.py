@@ -163,7 +163,7 @@ def copy_sources():
         os.makedirs(sourcesprefix, exist_ok=True)
         # copy source images
         print("rm -rf '"+sourcesprefix+wpath+"'")
-        shutil.rmtree(sourcesprefix+wpath)
+        shutil.rmtree(sourcesprefix+wpath, ignore_errors=True)
         print("cp -R '"+IMG_INPUT_PATH+wpath+"' '"+sourcesprefix+wpath+"'")
         shutil.copytree(IMG_INPUT_PATH+wpath, sourcesprefix+wpath)
 
