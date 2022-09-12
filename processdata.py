@@ -95,84 +95,129 @@ def add_work(row, g, with_inferred):
 def add_topic(row, g, with_inferred):
     pass
 
-def add_instance(row, g, with_inferred, winfos):
+def add_einstance(row, g, with_inferred, winfos):
     # 0: id
-    # 1: Prakraś ID
-    # 2: version of
-    # 3: Part of
-    # 4: part type
-    # 5: image range
-    # 6: collection
-    # 7: title
-    # 8: description
-    # 9: script
-    # 10: material
-    # 11: binding
-    # 12: Prakraś URL
-    # 13: condition
-    # 14: width
-    # 15: height
-    # 16: gandari.org item
-    # 17: date
-    # bdr:PrintMethod_Manuscript always true
+    # 1: part of
+    # 2: reproduction of
+    # 3: Title
+    # 4: text content
     main = BDR[row[0]]
-    g.add((main, RDF.type, BDO.Instance))
-    if row[3] == "":
-        winfo = winfos[row[0][1:]]
-        #g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
+    basename = row[0]
+    volnum = 1
+    if row[1] == "":
+        g.add((main, RDF.type, BDO.EtextInstance))
+        g.add((main, BDO.instanceReproductionOf, BDR[row[2]]))
+        g.add((main, BDO.contentMethod, BDR.ContentMethod_ComputerInput))
+        if with_inferred:
+            g.add((main, RDF.type, BDO.Instance))
+            g.add((main, RDF.type, BDO.DigitalInstance))
+            g.add((BDR[row[2]], BDO.instanceHasReproduction, main))
         admin = BDA[row[0]]
         g.add((admin, RDF.type, BDA.AdminData))
         g.add((admin, ADM.adminAbout, main))
         g.add((admin, ADM.status, BDA.StatusReleased))
+        g.add((admin, ADM.access, BDA.AccessOpen))
         g.add((admin, ADM.metadataLegal, BDA.LD_BDRC_CC0))
-        g.add((main, BDO.instanceHasReproduction, BDR[row[0][1:]]))
     else:
-        g.add((main, BDO.partOf, BDR[row[3]]))
-        g.add((main, BDO.inRootInstance, BDR[row[3]]))
+        main = BDR[row[1]]
+        basename = row[1]
+        volnum = int(row[0][-3:])
+    if row[4] != "":
+        vol = BDR["VL"+basename]
+        g.add((main, BDO.instanceHasVolume, vol))
+        g.add((vol, RDF.type, BDO.VolumeEtextAsset))
+        g.add((vol, BDO.volumeNumber, Literal(1, datatype=XSD.integer)))
         if with_inferred:
-            g.add((BDR[row[3]], BDO.hasPart, main))
-        if row[4] != "":
-            g.add((main, BDO.partType, BDR[row[4]]))
-        if row[5] != "":
-            [spage, epage] = row[5].split('-')
-            cl = BDR["CL"+row[0]+"_001"]
-            g.add((main, BDO.contentLocation, cl))
-            g.add((cl, RDF.type, BDO.ContentLocation))
-            g.add((cl, BDO.contentLocationEndPage, Literal(epage, datatype=XSD.integer)))
-            g.add((cl, BDO.contentLocationPage, Literal(spage, datatype=XSD.integer)))
-            g.add((cl, BDO.contentLocationVolume, Literal(1, datatype=XSD.integer)))
-            g.add((cl, BDO.contentLocationInstance, BDR[row[3][1:]]))
+            g.add((vol, BDO.volumeOf, main))
+        er = BDR["ERVL"+row[0]]
+        g.add((vol, BDO.volumeHasEtext, er))
+        g.add((er, RDF.type, BDO.EtextRef))
+        g.add((er, BDO.seqNum, Literal(volnum, datatype=XSD.integer)))
+        ut = BDR["UT"+row[0]]
+        g.add((er, BDO.eTextResource, ut))
+        g.add((ut, BDO.eTextInInstance, main))
+        g.add((ut, SKOS.prefLabel, Literal(row[3], lang="sa-x-iast")))
+        g.add((ut, RDF.type, BDO.EtextNonPaginated))
+        c = BDR["ECUT"+row[0]]
+        g.add((ut, BDO.eTextHasChunk, c))
+        g.add((c, RDF.type, BDO.EtextChunk))
+        g.add((c, BDO.chunkContents, Literal(row[4], lang="sa-x-iast")))
+        g.add((c, BDO.sliceStartChar, Literal(0, datatype=XSD.integer)))
+        g.add((c, BDO.sliceEndChar, Literal(len(row[4]), datatype=XSD.integer)))
+        p = BDR["EPUT"+row[0]]
+        g.add((p, RDF.type, BDO.EtextPage))
+        g.add((p, BDO.sliceStartChar, Literal(0, datatype=XSD.integer)))
+        g.add((p, BDO.sliceEndChar, Literal(len(row[4]), datatype=XSD.integer)))
+        g.add((p, BDO.seqNum, Literal(1, datatype=XSD.integer)))
+
+def add_instance(row, g, with_inferred, winfos):
+    # 0: id
+    # 1: Prakraś ID
+    # 2: collection
+    # 3: title
+    # 4: description
+    # 5: script
+    # 6: material
+    # 7: binding
+    # 8: external URL
+    # 9: condition
+    # 10: width
+    # 11: height
+    # 12: gandari.org item
+    # 13: date
+    # 14: scanInfo
+    # 15: path
+    # bdr:PrintMethod_Manuscript always true
+    main = BDR[row[0]]
+    g.add((main, RDF.type, BDO.Instance))
+    winfo = winfos[row[0][1:]]
+    #g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
+    admin = BDA[row[0]]
+    g.add((admin, RDF.type, BDA.AdminData))
+    g.add((admin, ADM.adminAbout, main))
+    g.add((admin, ADM.status, BDA.StatusReleased))
+    g.add((admin, ADM.metadataLegal, BDA.LD_BDRC_CC0))
+    g.add((main, BDO.instanceHasReproduction, BDR[row[0][1:]]))
     g.add((main, BDO.printMethod, BDR.PrintMethod_Manuscript))
     if row[2] != "":
-        g.add((main, BDO.instanceOf, BDR[row[2]]))
+        g.add((main, BDO.inCollection, BDR[row[2]]))
         if with_inferred:
-            g.add((BDR[row[2]], BDO.workHasInstance, main))
+            g.add((BDR[row[2]], BDO.collectionMember, main))
+    titles = get_literals(row[3])
+    i = 1
+    for t in titles:
+        g.add((main, SKOS.prefLabel, t))
+        titleR = BDR["TT"+row[0]+"_00"+str(i)]
+        g.add((main, BDO.hasTitle, titleR))
+        g.add((titleR, RDFS.label, t))
+        g.add((titleR, RDF.type, BDO.Title))
+        i += 1
+    if row[4] != "":
+        g.add((main, SKOS.description, Literal(row[4], lang="en")))
+    if row[5] != "":
+        g.add((main, BDO.script, BDR[row[5]]))
     if row[6] != "":
-        g.add((main, BDO.inCollection, BDR[row[6]]))
-        if with_inferred:
-            g.add((BDR[row[6]], BDO.collectionMember, main))
-    titlelang = "sa-x-ewts"
-    title = row[7]
-    if title.endswith("@en"):
-        title = title[:-3].strip()
-        titlelang = "en"
-    titleL = Literal(title, lang=titlelang)
-    g.add((main, SKOS.prefLabel, titleL))
-    titleR = BDR["TT"+row[0]+"_001"]
-    g.add((main, BDO.hasTitle, titleR))
-    g.add((titleR, RDFS.label, titleL))
-    g.add((titleR, RDF.type, BDO.Title))
-    if row[9] != "":
-        g.add((main, BDO.script, BDR[row[9]]))
-    if row[10] != "":
-        g.add((main, BDO.material, BDR[row[10]]))
-    if row[11] != "":
-        g.add((main, BDO.binding, BDR[row[11]]))
-    if row[17] != "":
+        g.add((main, BDO.material, BDR[row[6]]))
+    if row[7] != "":
+        g.add((main, BDO.binding, BDR[row[7]]))
+    if row[8] != "":
+        g.add((main, RDFS.seeAlso, BDR[row[8]]))
+    if row[13] != "":
         ev = BDR["EV"+row[0]+"_CE"]
         g.add((main, BDO.instanceEvent, ev))
-        g.add((ev, BDO.eventWhen, Literal(row[17], datatype=EDTF)))
+        g.add((ev, BDO.eventWhen, Literal(row[13], datatype=EDTF)))
         g.add((ev, RDF.type, BDO.CopyEvent))
+
+def get_literals(col, default_lang="en"):
+    res = []
+    for l in col.split(","):
+        l = l.strip()
+        lang = "en"
+        if "@" in l:
+            l = l[:l.rfind('@')].strip()
+            lang = "en"
+        res.append(Literal(l, lang=lang))
+    return res
 
 def add_iinstance(winfo, g, with_inferred):
     main = BDR[winfo['id']]
@@ -214,6 +259,7 @@ def add_collection(row, g, with_inferred):
     # 1: URL
     # 2: label
     # 3: description
+    # 4: part of
     main = BDR[row[0]]
     g.add((main, RDF.type, BDO.Collection))
     admin = BDA[row[0]]
@@ -222,7 +268,11 @@ def add_collection(row, g, with_inferred):
     g.add((admin, ADM.status, BDA.StatusReleased))
     g.add((admin, ADM.metadataLegal, BDA.LD_BDRC_CC0))
     g.add((main, SKOS.prefLabel, Literal(row[2], lang="en")))
-    g.add((main, RDFS.seeAlso, URIRef(row[1])))
+    if row[3]:
+        g.add((main, SKOS.description, Literal(row[3], lang="en")))
+    if row[4]:
+        g.add((main, BDO.subCollectionOf, BDR[row[4]]))
+        g.add((BDR[row[4]], BDO.hasSubCollection, main))
 
 def get_iginfos():
     iginfos = {}
@@ -274,17 +324,22 @@ def produce_ttl():
     g.bind("skos", SKOS)
     g.bind("owl", OWL)
     g.bind("rdfs", RDFS)
-    with open('input/Catalog template - Works _ Texts.csv', newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)
-        for row in reader:
-            add_work(row, g, True)
+    #with open('input/Catalog template - Works _ Texts.csv', newline='') as csvfile:
+    #    reader = csv.reader(csvfile)
+    #    next(reader)
+    #    for row in reader:
+    #        add_work(row, g, True)
     winfos = get_winfos()
-    with open('input/Catalog template - Version _ Manuscript.csv', newline='') as csvfile:
+    with open('input/Catalog template - Physical _ Item.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
             add_instance(row, g, True, winfos)
+    #with open('input/Catalog template - Digital Edition.csv', newline='') as csvfile:
+    #    reader = csv.reader(csvfile)
+    #    next(reader)
+    #    for row in reader:
+    #        add_einstance(row, g, True, winfos)
     with open('input/Catalog template - Collection.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
@@ -295,7 +350,7 @@ def produce_ttl():
     g.serialize("GND.ttl", format="turtle")
 
 def main():
-    #produce_ttl()
+    produce_ttl()
     produce_manifests()
 
 main()
