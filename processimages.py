@@ -85,16 +85,16 @@ def ildatafromfsfn(fsfn, s3fn):
 
 def get_source_folders():
     wfolderinfos = {}
-    with open('input/Catalog template - Version _ Manuscript.csv', newline='') as csvfile:
+    with open('input/Catalog template - Physical _ Item.csv', newline='') as csvfile:
         reader = csv.reader(csvfile)
         next(reader)
         for row in reader:
-            if row[18] == "":
+            if row[15] == "":
                 continue
             if row[0] in wfolderinfos:
                 print("two folders for "+row[0])
                 continue
-            wfolderinfos[row[0][1:]] = row[18]
+            wfolderinfos[row[0][1:]] = row[15]
     return wfolderinfos
 
 def get_iginfos():
