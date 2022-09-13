@@ -1,3 +1,4 @@
 BDRC ID,URL,Name,Description,Parent
 PR0GN1001,,Gandharan Manuscripts,,
 PR0GN0001,https://gandhari-texts.sydney.edu.au/collections/robert-senior-collection/,The Robert Senior Collection,,PR0GN1001
+PR0GN0002,,Published Manuscripts,,PR0GN1001

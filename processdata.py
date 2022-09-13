@@ -171,6 +171,7 @@ def add_instance(row, g, with_inferred, winfos):
     main = BDR[row[0]]
     g.add((main, RDF.type, BDO.Instance))
     winfo = winfos[row[0][1:]]
+    winfo["scaninfo_en"] = row[14]
     #g.add((main, BDO.numberOfVolumes, Literal(len(winfo['ig']), datatype=XSD.integer)))
     admin = BDA[row[0]]
     g.add((admin, RDF.type, BDA.AdminData))
@@ -232,6 +233,7 @@ def add_iinstance(winfo, g, with_inferred):
     g.add((main, RDF.type, BDO.ImageInstance))
     g.add((main, TMP.thumbnailIIIFService, URIRef(winfo['th'])))
     g.add((BDR["M"+winfo['id']], TMP.thumbnailIIIFService, URIRef(winfo['th'])))
+    g.add((main, BDO.scanInfo, Literal(winfo["scaninfo_en"], lang="en")))
     if with_inferred:
         g.add((main, BDO.instanceReproductionOf, BDR["M"+winfo['id']]))
     vnum = 1
@@ -247,7 +249,8 @@ def add_iinstance(winfo, g, with_inferred):
         g.add((igmain, BDO.volumeNumber, Literal(vnum, datatype=XSD.integer)))
         vnum += 1
         g.add((igmain, BDO.volumePagesTbrcIntro, Literal(0, datatype=XSD.integer)))
-        g.add((igmain, SKOS.prefLabel, Literal(iginfo['label_en'], lang="en")))
+        if iginfo['label_en']:
+            g.add((igmain, SKOS.prefLabel, Literal(iginfo['label_en'], lang="en")))
         g.add((igmain, BDO.volumePagesTotal, Literal(iginfo['nbimages'], datatype=XSD.integer)))
         g.add((main, BDO.instanceHasVolume, igmain))
         if with_inferred:
