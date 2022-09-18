@@ -40,7 +40,8 @@ def getS3FolderPrefix(w):
     md5 = hashlib.md5(str.encode(w))
     two = md5.hexdigest()[:2]
 
-    return 'Works/{two}/{RID}/'.format(two=two, RID=w)
+    #return 'Works/{two}/{RID}/'.format(two=two, RID=w)
+    return w+"/"
 
 def getS3FolderIG(imageGroupID):
     pre, rest = imageGroupID[0], imageGroupID[1:]
