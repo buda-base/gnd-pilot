@@ -274,8 +274,8 @@ def add_collection(row, g, with_inferred):
     if row[3]:
         g.add((main, SKOS.description, Literal(row[3], lang="en")))
     if row[4]:
-        g.add((main, BDO.subCollectionOf, BDR[row[4]]))
-        g.add((BDR[row[4]], BDO.hasSubCollection, main))
+        g.add((main, BDO.partOf, BDR[row[4]]))
+        g.add((BDR[row[4]], BDO.hasPart, main))
 
 def get_iginfos():
     iginfos = {}

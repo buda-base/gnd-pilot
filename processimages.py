@@ -11,9 +11,9 @@ import csv
 
 from PIL import Image
 
-IMG_INPUT_PATH = "images/"
-IMG_OUTPUT_PATH = "s3/"
-OPTJPG_CMD = None # "/home/eroux/softs/mozjpeg/build/jpegtran-static"
+IMG_INPUT_PATH = "images/" # "/mnt/Incoming/scans/Inbox/Gandhari/"
+IMG_OUTPUT_PATH = "s3/" # "/mnt/Incoming/scans/Inbox/Gandhari/s3/"
+OPTJPG_CMD = None # "/home/eroux/softs/mozjpeg/build/jpegtran-static", "/home/eroux/mozjpeg/jpegtran-static"
 
 if len(sys.argv) > 1:
     IMG_INPUT_PATH = sys.argv[1]
